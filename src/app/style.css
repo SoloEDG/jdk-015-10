@@ -465,10 +465,11 @@ input[type="checkbox"] {
   position: relative;
   background: #090918;
 }
-.canvas-wrap canvas {
-  display: block;
+.canvas-stack {
+  position: relative;
   width: 100%;
   aspect-ratio: 16/9;
+  display: block;
 }
 .stage-caption {
   position: absolute;
@@ -770,10 +771,18 @@ footer i {
 }
 .stage-shell:fullscreen .canvas-wrap {
   height: calc(100vh - 79px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-.stage-shell:fullscreen canvas {
+/* Keep the editable overlay exactly on top of the 16:9 stage bitmap. */
+.stage-shell:fullscreen .canvas-stack {
+  width: min(100%, calc((100vh - 79px) * 16 / 9));
+  height: auto;
+}
+.stage-shell:fullscreen .canvas-stack canvas {
+  width: 100%;
   height: 100%;
-  object-fit: contain;
 }
 @media (min-width: 1500px) {
   main {
@@ -782,9 +791,8 @@ footer i {
   .workspace {
     padding: 0 44px;
   }
-  .canvas-wrap canvas {
-    min-height: 380px;
-  }
+  /* Let the 16:9 ratio govern height: no min-height, or the bitmap stretches. */
+
 }
 @media (max-width: 1150px) {
   .workspace {
@@ -888,4 +896,66 @@ footer i {
   header {
     gap: 20px;
   }
+}
+
+/* ── Motion path scene ─────────────────────────────────────────────── */
+.canvas-stack .stage-canvas,
+.canvas-stack .stage-guides {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.stage-guides {
+  pointer-events: none;
+}
+.canvas-stack.editing .stage-guides {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.path-panel .path-hint {
+  margin: 13px 0 15px;
+  line-height: 1.75;
+}
+.path-panel .live-buttons {
+  margin-top: 12px;
+}
+.segmented {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 12px;
+}
+.segmented > span {
+  font-size: 9px;
+  color: #7c7d8d;
+  margin-right: 3px;
+  white-space: nowrap;
+}
+.segmented button {
+  flex: 1;
+  padding: 7px 4px;
+  font-size: 9px;
+  white-space: nowrap;
+}
+.path-meta {
+  display: block;
+  margin-top: 13px;
+  line-height: 1.7;
+}
+.path-meta em {
+  float: right;
+  color: #807c90;
+}
+.path-actions {
+  margin-top: 15px;
+}
+.path-actions button {
+  background: transparent;
+}
+.scene-thumb.path {
+  background: radial-gradient(#514076, #161420);
+  color: #d4b7ff;
+  font-size: 30px;
 }

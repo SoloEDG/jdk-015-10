@@ -1,5 +1,22 @@
 import { reactive } from "vue";
-import type { StageDocument } from "./types";
+import type { MotionPath, PathPoint, StageDocument } from "./types";
+
+export const DEFAULT_PATH_POINTS: PathPoint[] = [
+  { x: 0.12, y: 0.6 },
+  { x: 0.28, y: 0.3 },
+  { x: 0.46, y: 0.68 },
+  { x: 0.64, y: 0.3 },
+  { x: 0.82, y: 0.58 },
+];
+
+export function createDefaultPath(): MotionPath {
+  return {
+    points: DEFAULT_PATH_POINTS.map((p) => ({ ...p })),
+    closed: false,
+    endMode: "loop",
+  };
+}
+
 export function createDocument(): StageDocument {
   return reactive({
     scenes: [
@@ -35,6 +52,17 @@ export function createDocument(): StageDocument {
         intensity: 0.9,
         speed: 1.2,
       },
+      {
+        id: "s5",
+        name: "Ink trajectory",
+        kind: "path",
+        theme: "violet",
+        intensity: 0.85,
+        speed: 0.8,
+        path: createDefaultPath(),
+        density: 0.75,
+        spread: 1,
+      },
     ],
     activeId: "s1",
     gain: 0.65,
@@ -45,5 +73,7 @@ export function createDocument(): StageDocument {
     frozen: false,
     strobe: false,
     master: 1,
+    guides: true,
+    presentation: false,
   });
 }

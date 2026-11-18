@@ -4,6 +4,7 @@ export function bindShortcuts(actions: {
   blackout: () => void;
   freeze: () => void;
   tap: () => void;
+  guides?: () => void;
 }) {
   const handler = (e: KeyboardEvent) => {
     if (
@@ -17,10 +18,11 @@ export function bindShortcuts(actions: {
       e.preventDefault();
       actions.play();
     }
-    if (/^[1-4]$/.test(e.key)) actions.scene(Number(e.key) - 1);
+    if (/^[1-5]$/.test(e.key)) actions.scene(Number(e.key) - 1);
     if (e.key.toLowerCase() === "b") actions.blackout();
     if (e.key.toLowerCase() === "f") actions.freeze();
     if (e.key.toLowerCase() === "t") actions.tap();
+    if (e.key.toLowerCase() === "g") actions.guides?.();
   };
   window.addEventListener("keydown", handler);
   return () => window.removeEventListener("keydown", handler);

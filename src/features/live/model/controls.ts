@@ -17,6 +17,9 @@ export function createControls(doc: StageDocument) {
   function freeze() {
     doc.frozen = !doc.frozen;
   }
-  return { bpm, tap, blackout, freeze };
+  function guides() {
+    doc.guides = !doc.guides;
+  }
+  return { bpm, tap, blackout, freeze, guides };
 }
 export type LiveControls = ReturnType<typeof createControls>;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onUnmounted, ref } from "vue";
+import { computed, onUnmounted, ref } from "vue";
 import {
   Maximize2,
   Radio,
@@ -10,7 +10,8 @@ import {
 } from "lucide-vue-next";
 import { createDocument } from "../shared/document";
 import { createAudio, AudioPanel } from "../features/audio";
-import { StageCanvas, ThemePanel } from "../features/visuals";
+import { PathPanel, StageCanvas, ThemePanel } from "../features/visuals";
+import { resetPath } from "../features/visuals/model/pathActions";
 import { createScenes, ScenePanel, SceneStrip } from "../features/scenes";
 import {
   createControls,
@@ -25,8 +26,20 @@ const doc = createDocument(),
   controls = createControls(doc),
   recorder = createRecorder();
 const canvas = ref<HTMLCanvasElement>(),
-  stage = ref<HTMLElement>();
+  stage = ref<HTMLElement>(),
+  stageCanvas = ref<InstanceType<typeof StageCanvas>>();
 const fullError = ref("");
+const activeScene = computed(
+  () =>
+    doc.scenes.find((s) => s.id === doc.activeId) ?? doc.scenes[0],
+);
+const recording = () => recorder.state.status !== "idle";
+function resetActivePath() {
+  resetPath(activeScene.value);
+}
+function clearActiveParticles() {
+  stageCanvas.value?.clearParticles(activeScene.value.id);
+}
 const unbind = bindShortcuts({
   play: () => {
     void (audio.state.playing ? audio.pause() : audio.play());
@@ -35,18 +48,34 @@ const unbind = bindShortcuts({
   blackout: controls.blackout,
   freeze: controls.freeze,
   tap: controls.tap,
+  guides: controls.guides,
 });
 function start() {
+  // Guides are excluded from the stream at the source: the canvas handed to
+  // MediaRecorder is the stage canvas, which never receives guide painting.
   if (canvas.value) recorder.start(canvas.value, audio.stream());
 }
 async function fullscreen() {
   try {
-    await stage.value?.requestFullscreen();
+    // Fullscreen is the audience view: hide editing chrome for its duration.
+    doc.presentation = true;
+    const promise = stage.value?.requestFullscreen();
+    if (!promise) {
+      doc.presentation = false;
+      return;
+    }
+    await promise;
   } catch {
+    doc.presentation = false;
     fullError.value = "当前浏览器不支持全屏";
   }
 }
+function exitPresentation() {
+  if (!document.fullscreenElement) doc.presentation = false;
+}
+document.addEventListener("fullscreenchange", exitPresentation);
 onUnmounted(() => {
+  document.removeEventListener("fullscreenchange", exitPresentation);
   unbind();
   audio.dispose();
   recorder.dispose();
@@ -99,7 +128,9 @@ onUnmounted(() => {
           </div>
           <div class="canvas-wrap">
             <StageCanvas
+              ref="stageCanvas"
               :doc="doc"
+              :recording="recording"
               :read="() => audio.frame.value"
               @ready="canvas = $event"
             />
@@ -117,6 +148,12 @@ onUnmounted(() => {
         <p v-if="fullError" role="alert">{{ fullError }}</p>
         <SceneStrip :doc="doc" @select="scenes.select" /><ThemePanel
           :scene="scenes.active.value"
+        /><PathPanel
+          v-if="activeScene.kind === 'path'"
+          :scene="activeScene"
+          :doc="doc"
+          @reset="resetActivePath"
+          @clear="clearActiveParticles"
         /><TakeList :recorder="recorder" />
       </div>
       <aside class="right-column">
@@ -141,8 +178,8 @@ onUnmounted(() => {
         ><SlidersHorizontal :size="13" /> ALL SYSTEMS READY
         <i>·</i> 浏览器本地运行</span
       ><span
-        >SPACE 播放 / 暂停 <i>·</i> 1–4 场景 <i>·</i> B 黑场 <i>·</i> F
-        冻结</span
+        >SPACE 播放 / 暂停 <i>·</i> 1–5 场景 <i>·</i> B 黑场 <i>·</i> F
+        冻结 <i>·</i> G 辅助线</span
       ><span>MADE FOR THE MOMENT ↗</span>
     </footer>
   </div>

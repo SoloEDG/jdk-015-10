@@ -1,6 +1,6 @@
 import { reactive, shallowRef } from "vue";
 import type { Analysis, StageDocument } from "../../../shared/types";
-import { analyse } from "../lib/analyse";
+import { analyse, createBeatDetector } from "../lib/analyse";
 import { demoBuffer } from "../lib/demo";
 export function createAudio(doc: StageDocument) {
   const state = reactive({
@@ -18,6 +18,7 @@ export function createAudio(doc: StageDocument) {
     rms: 0,
     bass: 0,
     beat: false,
+    beatCount: 0,
     time: 0,
   });
   let ctx: AudioContext,
@@ -30,7 +31,9 @@ export function createAudio(doc: StageDocument) {
   let origin = 0,
     offset = 0,
     epoch = 0,
-    raf = 0;
+    timer = 0,
+    beatCount = 0;
+  const beats = createBeatDetector();
   function init() {
     if (ctx) return;
     ctx = new AudioContext();
@@ -44,6 +47,7 @@ export function createAudio(doc: StageDocument) {
     buffer = demoBuffer(ctx);
   }
   function detach() {
+    beats.reset();
     if (node) {
       if (node instanceof AudioBufferSourceNode) {
         node.onended = null;
@@ -66,14 +70,21 @@ export function createAudio(doc: StageDocument) {
     analyser.getByteFrequencyData(f);
     analyser.getByteTimeDomainData(w);
     state.position = state.playing ? offset + ctx.currentTime - origin : offset;
-    frame.value = analyse(
+    const bass = f.slice(0, 12).reduce((sum, v) => sum + v, 0) / 12 / 255;
+    const next = analyse(
       f,
       w,
       state.position,
-      doc.sensitivity,
-      frame.value.bass,
+      beats.detect(bass, performance.now() / 1000),
+      beatCount,
     );
-    raf = requestAnimationFrame(pump);
+    beatCount = next.beatCount;
+    frame.value = next;
+  }
+  function monitor() {
+    // Audio onsets are sampled on a steady timer, not on animation frames:
+    // a slow or detail-thinned preview must never swallow a short beat.
+    if (!timer) timer = window.setInterval(pump, 16);
   }
   async function play() {
     init();
@@ -90,13 +101,15 @@ export function createAudio(doc: StageDocument) {
     origin = ctx.currentTime;
     node.start(0, offset % buffer.duration);
     state.playing = true;
-    if (!raf) pump();
+    monitor();
   }
   function pause() {
     if (!state.playing) return;
     offset = state.position;
     detach();
     state.playing = false;
+    if (timer) window.clearInterval(timer);
+    timer = 0;
   }
   async function file(file: File) {
     init();
@@ -141,7 +154,7 @@ export function createAudio(doc: StageDocument) {
       offset = 0;
       origin = ctx.currentTime;
       await ctx.resume();
-      if (!raf) pump();
+      monitor();
     } catch {
       state.error = "麦克风不可用或未获授权，原有音源已保留。";
     }
@@ -160,7 +173,8 @@ export function createAudio(doc: StageDocument) {
   }
   function dispose() {
     ++epoch;
-    cancelAnimationFrame(raf);
+    if (timer) window.clearInterval(timer);
+    timer = 0;
     detach();
     void ctx?.close();
   }

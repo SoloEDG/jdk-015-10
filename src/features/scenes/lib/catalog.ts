@@ -29,4 +29,10 @@ export const catalog: {
     icon: "◇",
     description: "几何 / 无限隧道",
   },
+  {
+    kind: "path",
+    label: "Ink trajectory",
+    icon: "↝",
+    description: "粒子 / 可编辑运动路径",
+  },
 ];

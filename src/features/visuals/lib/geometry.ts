@@ -1,4 +1,12 @@
 import type { Analysis, Scene, Theme } from "../../../shared/types";
+import type { PathField } from "../model/particleField";
+
+export interface SceneDrawOptions {
+  pathField?: PathField;
+  /** 0.25–1. Drawing fidelity only; simulation stays at full resolution. */
+  quality?: number;
+}
+
 export function drawScene(
   c: CanvasRenderingContext2D,
   w: number,
@@ -8,6 +16,7 @@ export function drawScene(
   t: Theme,
   phase: number,
   sensitivity: number,
+  options: SceneDrawOptions = {},
 ) {
   const cx = w / 2,
     cy = h / 2,
@@ -80,6 +89,11 @@ export function drawScene(
       c.strokeStyle = t.colors[j % 3] + "b0";
       c.stroke();
     }
+  } else if (s.kind === "path") {
+    // Only the particle swarm is part of the audience picture. The authored
+    // path, its points and handles are drawn by the separate editor overlay.
+    c.shadowBlur = 0;
+    options.pathField?.draw(c, w, h, t, options.quality ?? 1);
   } else {
     for (let i = 0; i < 20; i++) {
       const z = (i / 20 + phase * 0.06) % 1;
